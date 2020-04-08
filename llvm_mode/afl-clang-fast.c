@@ -35,6 +35,7 @@
 
 static u8*  obj_path;               /* Path to runtime libraries         */
 static u8** cc_params;              /* Parameters passed to the real CC  */
+static u8** cc_params_pri;
 static u32  cc_par_cnt = 1;         /* Param count, including argv0      */
 
 
@@ -91,15 +92,32 @@ static void find_obj(u8* argv0) {
  
 }
 
+int endsWith (const char* base, const char* str) {
+    int blen = strlen(base);
+    int slen = strlen(str);
+    return (blen >= slen) && (0 == strcmp(base + blen - slen, str));
+}
+
+static void print_param(u8** argv) {
+  u32 i = 0;
+  printf("-------------\n");
+  while(argv[i]) {
+    printf("%s\n", argv[i]);
+    i++;
+  }
+}
 
 /* Copy argv to cc_params, making the necessary edits. */
 
 static void edit_params(u32 argc, char** argv) {
 
+  u8 skip_llvm_pass = 0;
+  u32 pri_index = 0;
   u8 fortify_set = 0, asan_set = 0, x_set = 0, maybe_linking = 1, bit_mode = 0;
   u8 *name;
 
   cc_params = ck_alloc((argc + 128) * sizeof(u8*));
+  cc_params_pri = ck_alloc((argc + 128) * sizeof(u8*));
 
   name = strrchr(argv[0], '/');
   if (!name) name = argv[0]; else name++;
@@ -311,6 +329,38 @@ static void edit_params(u32 argc, char** argv) {
   }
 
   cc_params[cc_par_cnt] = NULL;
+
+  for (u32 i = 0; i <= cc_par_cnt; i++) {
+    if (!cc_params[i])
+      continue;
+
+    if (endsWith(cc_params[i], ".S") ||
+        endsWith(cc_params[i], ".s") ||
+        endsWith(cc_params[i], ".asm")) {
+          skip_llvm_pass = 1;
+          break;
+    }
+  }
+
+  if (skip_llvm_pass) {
+    for (u32 i = 0; i <= cc_par_cnt; i++) {
+      if (cc_params[i] == NULL) {
+        cc_params_pri[pri_index] = NULL;
+        break;
+      }
+
+      if (!strncmp(cc_params[i], "-distance", 9)
+        || !strncmp(cc_params[i], "-targets", 8)
+        || !strncmp(cc_params[i], "-outdir", 7)
+        || !strncmp(cc_params[i], "-mllvm", 6)) {
+          continue;
+      }
+      cc_params_pri[pri_index] = cc_params[i];
+      pri_index++;
+    }
+
+    cc_params = cc_params_pri;
+  }
 
 }
 
