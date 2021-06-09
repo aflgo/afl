@@ -86,6 +86,11 @@ void distance(
     std::ofstream &out,
     unordered_map<std::string, double> &bb_distance
 ) {
+    if (not is_cg and bb_distance.find(name) != bb_distance.end()) {
+        out << name << "," << bo::lexical_cast<std::string>(10 * bb_distance[name]) << "\n";
+        return;
+    }
+
     double distance = -1;
     for (vertex_desc n : find_nodes(G, name)) {
         std::vector<int> distances(bo::num_vertices(G), 0);

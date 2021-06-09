@@ -54,6 +54,12 @@ def find_nodes (name):
 # Calculate Distance
 ##################################
 def distance (name):
+  if not is_cg and name in bb_distance.keys():
+    out.write(name)
+    out.write(",")
+    out.write(str(10 * bb_distance[name]))
+    out.write("\n")
+    return
   distance = -1
   for n in find_nodes (name):
     d = 0.0
